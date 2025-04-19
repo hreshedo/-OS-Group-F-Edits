@@ -3,31 +3,32 @@
  * Author: Hasset Reshedo
  * Role: Train Process (Child Process)
  * Group F – Spring 2025 Project (CS 4323)
- * Date Modified: April 17, 2025
+ * Date Modified: April 19, 2025 (Final Patch by ChatGPT)
  *
- * Description:
- * This code file handles the train child process from the train process main.
- * It communicates with the parent process using IPC. The train simulation moves
- * across intersections by sending ACQUIRE and RELEASE messages to the parent
- * and waiting for GRANT, WAIT, or DENY responses via message queues.
- * The code calls log_event from logger.h, while sim_time updates are handled by the parent server.
+ * -------------------- PATCHED SECTION SUMMARY --------------------
+ * ✅ Sends sender_pid with each message (required for targeted replies)
+ * ✅ Uses -getpid() as unique expected_type for receiving
+ * 📌 Ensures parent can respond only to correct train
+ * ------------------------------------------------------------------
  */
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>     // For sleep() and fork()
+#include <unistd.h>
+#include <sys/types.h>
+
 #include "ipc_manager.h"
-#include "parent_server.h"      // [ADDED] For parent handling logic
-#include "resource_manager.h"   // [ADDED] May use resource table in future
-#include "logger.h"             // [ADDED] If logging ever triggered in IPC
-#include "input_parser.h"       // [ADDED] For access to route/intersection IDs
+#include "parent_server.h"
+#include "resource_manager.h"
+#include "logger.h"
+#include "input_parser.h"
 
 void train_acquire_intersection(int train_msgpid_ipc, const char* name_train, const char* current_stop) {
-    send_ipc_message(train_msgpid_ipc, MSG_TYPE_ACQUIRE, name_train, current_stop);
+    send_ipc_message(train_msgpid_ipc, MSG_TYPE_ACQUIRE, name_train, current_stop, getpid()); // [PATCHED]
 }
 
 void train_release_intersection(int train_msgpid_ipc, const char* name_train, const char* current_stop) {
-    send_ipc_message(train_msgpid_ipc, MSG_TYPE_RELEASE, name_train, current_stop);
+    send_ipc_message(train_msgpid_ipc, MSG_TYPE_RELEASE, name_train, current_stop, getpid()); // [PATCHED]
 }
 
 void run_train_behavior(const char* name_train, char path[][32], int path_len, int train_msgpid_ipc) {
@@ -37,7 +38,7 @@ void run_train_behavior(const char* name_train, char path[][32], int path_len, i
         train_acquire_intersection(train_msgpid_ipc, name_train, current_stop);
 
         ipc_message ipc_response;
-        receive_ipc_message(train_msgpid_ipc, &ipc_response, -getpid()); // [PATCHED] Changed expected_type from 0 to -getpid() for uniqueness
+        receive_ipc_message(train_msgpid_ipc, &ipc_response, -getpid()); // [PATCHED] targeted receive
 
         switch (ipc_response.msg_type) {
             case MSG_TYPE_GRANT:
