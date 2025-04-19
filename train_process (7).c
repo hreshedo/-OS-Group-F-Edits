@@ -16,10 +16,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>     // For sleep() and fork()
-#include "ipc_manager.h"   // IPC manager header by Logan – handles message queues
-#include "input_parser.h"  // Input parser header by Connor – manages routes and intersections
-#include "train_process.h"   // header for train_process
-#include "logger.h"   // Logger Code by Beatrice
+#include "ipc_manager.h"
+#include "parent_server.h"      // [ADDED] For parent handling logic
+#include "resource_manager.h"   // [ADDED] May use resource table in future
+#include "logger.h"             // [ADDED] If logging ever triggered in IPC
+#include "input_parser.h"       // [ADDED] For access to route/intersection IDs
 
 void train_acquire_intersection(int train_msgpid_ipc, const char* name_train, const char* current_stop) {
     send_ipc_message(train_msgpid_ipc, MSG_TYPE_ACQUIRE, name_train, current_stop);
