@@ -3,17 +3,17 @@
 #include <string.h>
 #include <sys/msg.h>
 #include <errno.h>
+#include <unistd.h> // [PATCHED] For getpid()
 
 // Author: Logan Coit (Patched by ChatGPT – April 19, 2025, Finalized Fix)
 // Group F – Spring 2025 Project (CS 4323)
 
-
 #include "ipc_manager.h"
-#include "train_process.h"      // [ADDED] For train behavior references
-#include "parent_server.h"      // [ADDED] For parent handling logic
-#include "resource_manager.h"   // [ADDED] May use resource table in future
-#include "logger.h"             // [ADDED] If logging ever triggered in IPC
-#include "input_parser.h"       // [ADDED] For access to route/intersection IDs
+#include "train_process.h"
+#include "parent_server.h"
+#include "resource_manager.h"
+#include "logger.h"
+#include "input_parser.h"
 
 // Create or get the message queue
 int init_message_queue() {
@@ -26,17 +26,17 @@ int init_message_queue() {
 }
 
 // Send a message to the queue
-int send_ipc_message(int msgqid, long type, const char* train_id, const char* intersection) {
+int send_ipc_message(int msgqid, long type, const char* train_id, const char* intersection, pid_t sender_pid) { // [PATCHED] added sender_pid
     ipc_message msg;
-    msg.msg_type = type;  // [PATCHED] Ensure this is a valid long value > 0
+    msg.msg_type = type;
+    msg.sender_pid = sender_pid; // [PATCHED]
 
     strncpy(msg.train_id, train_id, sizeof(msg.train_id) - 1);
-    msg.train_id[sizeof(msg.train_id) - 1] = '\0';  // [PATCHED] Safe null-termination
+    msg.train_id[sizeof(msg.train_id) - 1] = '\0';
 
     strncpy(msg.intersection, intersection, sizeof(msg.intersection) - 1);
-    msg.intersection[sizeof(msg.intersection) - 1] = '\0';  // [PATCHED] Safe null-termination
+    msg.intersection[sizeof(msg.intersection) - 1] = '\0';
 
-    // [PATCHED] Check valid type before sending
     if (type <= 0) {
         fprintf(stderr, "[IPC ERROR] Invalid msg_type: must be positive.\n");
         return -1;
@@ -52,7 +52,6 @@ int send_ipc_message(int msgqid, long type, const char* train_id, const char* in
 
 // Receive a message of a specific type
 int receive_ipc_message(int msgqid, ipc_message* msg, long expected_type) {
-    // [FIXED] Allow expected_type == 0 for wildcard receive (used by parent)
     if (expected_type < 0) {
         fprintf(stderr, "[IPC ERROR] Invalid expected_type for receive: %ld\n", expected_type);
         return -1;
