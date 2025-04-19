@@ -7,6 +7,7 @@
  * -------------------- PATCHED SECTION SUMMARY --------------------
  * ✅ Added logging of ACQUIRE and DENY messages using log_event()
  * ✅ Injected sim_time updates at logging points
+ * ✅ Updated all send_ipc_message() calls to use -msg.sender_pid for targeted replies
  * 📌 Justified by Spring Spec Rubric: "Logs all train requests, grants, releases,
  *     and deadlock events with timestamps." — Logging & Output Spec (10 pts)
  * ------------------------------------------------------------------
@@ -49,7 +50,6 @@ int* sim_time;
 pthread_mutex_t* time_mutex;
 int shmId, timeShmId;
 
-// Sim time increment (event-based)
 void increment_sim_time() {
     pthread_mutex_lock(time_mutex);
     (*sim_time)++;
@@ -116,7 +116,6 @@ void handleRequests(int msgqid) {
             char log_msg[256];
 
             if (msg.msg_type == MSG_TYPE_ACQUIRE) {
-                // [PATCHED] Log ACQUIRE request (Spring Spec format)
                 increment_sim_time();
                 int time_now = get_sim_time();
                 snprintf(log_msg, sizeof(log_msg), "Sent ACQUIRE request for %s", msg.intersection);
@@ -128,7 +127,7 @@ void handleRequests(int msgqid) {
                     if (pthread_mutex_trylock(&sharedIntersections[idx].lock.mutex) == 0) {
                         remove_waiting(msg.intersection, msg.train_id);
                         add_holding(msg.intersection, msg.train_id);
-                        send_ipc_message(msgqid, MSG_TYPE_GRANT, msg.train_id, msg.intersection);
+                        send_ipc_message(msgqid, MSG_TYPE_GRANT, msg.train_id, msg.intersection, -msg.sender_pid); // [PATCHED]
 
                         increment_sim_time();
                         time_now = get_sim_time();
@@ -144,7 +143,7 @@ void handleRequests(int msgqid) {
                     if (sem_trywait(&sharedIntersections[idx].lock.semaphore) == 0) {
                         remove_waiting(msg.intersection, msg.train_id);
                         add_holding(msg.intersection, msg.train_id);
-                        send_ipc_message(msgqid, MSG_TYPE_GRANT, msg.train_id, msg.intersection);
+                        send_ipc_message(msgqid, MSG_TYPE_GRANT, msg.train_id, msg.intersection, -msg.sender_pid); // [PATCHED]
 
                         increment_sim_time();
                         time_now = get_sim_time();
@@ -158,7 +157,7 @@ void handleRequests(int msgqid) {
                     }
                 }
 
-                detect_and_resolve_deadlock(msgqid);  // no changes here
+                detect_and_resolve_deadlock(msgqid);
             }
 
             else if (msg.msg_type == MSG_TYPE_RELEASE) {
@@ -175,7 +174,6 @@ void handleRequests(int msgqid) {
                 log_event(msg.train_id, log_msg, time_now);
             }
 
-            // [PATCHED] Log DENY responses (e.g., from deadlock handler)
             else if (msg.msg_type == MSG_TYPE_DENY) {
                 increment_sim_time();
                 int time_now = get_sim_time();
