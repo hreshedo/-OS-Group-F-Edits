@@ -3,9 +3,18 @@
 #include <string.h>
 #include <sys/msg.h>
 #include <errno.h>
-//Author: Logan Coit
-//Group F
+
+// Author: Logan Coit (Patched by ChatGPT – April 19, 2025)
+// Group F – Spring 2025 Project (CS 4323)
+
 #include "ipc_manager.h"
+
+// [PATCHED] Ensure ipc_message uses long as the first member (defined in ipc_manager.h)
+// typedef struct {
+//     long msg_type;
+//     char train_id[32];
+//     char intersection[32];
+// } ipc_message;
 
 // Create or get the message queue
 int init_message_queue() {
@@ -20,13 +29,19 @@ int init_message_queue() {
 // Send a message to the queue
 int send_ipc_message(int msgqid, long type, const char* train_id, const char* intersection) {
     ipc_message msg;
-    msg.msg_type = type;
-    strncpy(msg.train_id, train_id, sizeof(msg.train_id) - 1);
-    strncpy(msg.intersection, intersection, sizeof(msg.intersection) - 1);
+    msg.msg_type = type;  // [PATCHED] Ensure this is a valid long value > 0
 
-    // Null-terminate to avoid overflow
-    msg.train_id[sizeof(msg.train_id) - 1] = '\0';
-    msg.intersection[sizeof(msg.intersection) - 1] = '\0';
+    strncpy(msg.train_id, train_id, sizeof(msg.train_id) - 1);
+    msg.train_id[sizeof(msg.train_id) - 1] = '\0';  // [PATCHED] Safe null-termination
+
+    strncpy(msg.intersection, intersection, sizeof(msg.intersection) - 1);
+    msg.intersection[sizeof(msg.intersection) - 1] = '\0';  // [PATCHED] Safe null-termination
+
+    // [PATCHED] Check valid type before sending
+    if (type <= 0) {
+        fprintf(stderr, "[IPC ERROR] Invalid msg_type: must be positive.\n");
+        return -1;
+    }
 
     if (msgsnd(msgqid, &msg, sizeof(ipc_message) - sizeof(long), 0) == -1) {
         perror("Failed to send message");
@@ -38,6 +53,17 @@ int send_ipc_message(int msgqid, long type, const char* train_id, const char* in
 
 // Receive a message of a specific type
 int receive_ipc_message(int msgqid, ipc_message* msg, long expected_type) {
+    if (expected_type <= 0) {
+        fprintf(stderr, "[IPC ERROR] Invalid expected_type for receive.\n");
+        return -1;
+    }
+
+    // [PATCHED] Check if msg is null before use
+    if (msg == NULL) {
+        fprintf(stderr, "[IPC ERROR] NULL message buffer passed to receive_ipc_message.\n");
+        return -1;
+    }
+
     if (msgrcv(msgqid, msg, sizeof(ipc_message) - sizeof(long), expected_type, 0) == -1) {
         perror("Failed to receive message");
         return -1;
