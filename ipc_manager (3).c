@@ -4,17 +4,16 @@
 #include <sys/msg.h>
 #include <errno.h>
 
-// Author: Logan Coit (Patched by ChatGPT – April 19, 2025)
+// Author: Logan Coit (Patched by ChatGPT – April 19, 2025, Finalized Fix)
 // Group F – Spring 2025 Project (CS 4323)
 
-#include "ipc_manager.h"
 
-// [PATCHED] Ensure ipc_message uses long as the first member (defined in ipc_manager.h)
-// typedef struct {
-//     long msg_type;
-//     char train_id[32];
-//     char intersection[32];
-// } ipc_message;
+#include "ipc_manager.h"
+#include "train_process.h"      // [ADDED] For train behavior references
+#include "parent_server.h"      // [ADDED] For parent handling logic
+#include "resource_manager.h"   // [ADDED] May use resource table in future
+#include "logger.h"             // [ADDED] If logging ever triggered in IPC
+#include "input_parser.h"       // [ADDED] For access to route/intersection IDs
 
 // Create or get the message queue
 int init_message_queue() {
@@ -53,12 +52,12 @@ int send_ipc_message(int msgqid, long type, const char* train_id, const char* in
 
 // Receive a message of a specific type
 int receive_ipc_message(int msgqid, ipc_message* msg, long expected_type) {
-    if (expected_type <= 0) {
-        fprintf(stderr, "[IPC ERROR] Invalid expected_type for receive.\n");
+    // [FIXED] Allow expected_type == 0 for wildcard receive (used by parent)
+    if (expected_type < 0) {
+        fprintf(stderr, "[IPC ERROR] Invalid expected_type for receive: %ld\n", expected_type);
         return -1;
     }
 
-    // [PATCHED] Check if msg is null before use
     if (msg == NULL) {
         fprintf(stderr, "[IPC ERROR] NULL message buffer passed to receive_ipc_message.\n");
         return -1;
