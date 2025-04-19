@@ -1,0 +1,8 @@
+//Connor Collins
+//Group F intersections
+
+IntersectionA:1
+IntersectionB:2
+IntersectionC:1
+IntersectionD:3
+IntersectionE:2

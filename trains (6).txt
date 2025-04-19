@@ -1,0 +1,8 @@
+//Connor Collins
+//Group F - Trains
+
+Train1:IntersectionA,IntersectionB,IntersectionC
+Train2:IntersectionB,IntersectionC,IntersectionD
+Train3:IntersectionD,IntersectionA
+Train4:IntersectionE,IntersectionB,IntersectionC,IntersectionD
+Train5:IntersectionC,IntersectionA
