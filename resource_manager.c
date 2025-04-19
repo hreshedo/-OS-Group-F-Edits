@@ -7,6 +7,7 @@
  * -------------------- PATCHED SECTION SUMMARY --------------------
  * ✅ Added log_event() for: Deadlock Detected, Preempting, and Forced Release
  * ✅ Added increment_sim_time() and get_sim_time() integration
+ * ✅ FIXED: Added missing sender_pid (getpid()) in deadlock-triggered send_ipc_message
  * 📌 Justified by Spring Spec Rubric:
  *     "Log all train requests, grants, releases, and deadlock events with timestamps"
  * ------------------------------------------------------------------
@@ -15,13 +16,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>  // [PATCHED] For getpid()
 
 #include "resource_manager.h"
 #include "ipc_manager.h"
 #include "input_parser.h"
-#include "logger.h"  // [PATCHED] Included to enable logging of deadlock events
+#include "logger.h"
 
-// [PATCHED] Declare external timekeeping functions used for timestamp logging
 extern int get_sim_time();
 extern void increment_sim_time();
 
@@ -111,25 +112,23 @@ void detect_and_resolve_deadlock(int msgqid) {
 
                             for (int hh = 0; hh < resource_table[k].num_holding; hh++) {
                                 if (strcmp(resource_table[k].holding_trains[hh], waiting_train) == 0) {
-                                    // [PATCHED] Log Deadlock Detected
                                     increment_sim_time();
                                     int stime = get_sim_time();
                                     char msg[256];
+
                                     snprintf(msg, sizeof(msg), "Deadlock detected! Cycle: %s ↔ %s.", holder, waiting_train);
                                     log_event("SERVER", msg, stime);
 
-                                    // [PATCHED] Log Preemption
                                     increment_sim_time();
                                     snprintf(msg, sizeof(msg), "Preempting %s from %s.", resource_table[i].intersection, holder);
                                     log_event("SERVER", msg, get_sim_time());
 
-                                    // [PATCHED] Log Forced Release
                                     increment_sim_time();
                                     snprintf(msg, sizeof(msg), "Train %s released %s forcibly.", holder, resource_table[i].intersection);
                                     log_event("SERVER", msg, get_sim_time());
 
-                                    // Original deadlock resolution logic
-                                    send_ipc_message(msgqid, MSG_TYPE_DENY, holder, resource_table[i].intersection);
+                                    // [PATCHED] Use getpid() for sender_pid
+                                    send_ipc_message(msgqid, MSG_TYPE_DENY, holder, resource_table[i].intersection, getpid());
                                     remove_holding(resource_table[i].intersection, holder);
                                     remove_waiting(resource_table[k].intersection, holder);
 
